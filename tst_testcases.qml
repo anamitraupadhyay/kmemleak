@@ -1,6 +1,6 @@
 import QtQuick 2.15
 import QtTest 1.0
-
+// /opt/Qt/6.9.1/gcc_64/bin/qmltestrunner -input tst_testcases.qml
 TestCase {
     name: "KMemLeakTests"
 
