@@ -106,9 +106,9 @@ TestCase {
 
     // Test color code logic
     function test_color_codes() {
-        var normalColor = "\033[0m"
-        var redColor = "\033[1;31m"
-        var yellowColor = "\033[1;33m"
+        var normalColor = "\x1B[0m"
+        var redColor = "\x1B[1;31m"
+        var yellowColor = "\x1B[1;33m"
         
         verify(normalColor.length > 0, "normal color code exists")
         verify(redColor.length > 0, "red color code exists")
