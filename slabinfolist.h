@@ -1,0 +1,283 @@
+#ifndef SLABINFOLIST_H
+#define SLABINFOLIST_H
+
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+// file to parse slab allocator info
+#define FILE_SLABINFO "/proc/slabinfo"
+#define MAX_NAME_LEN 64
+// define 5 seconds for now later it can be changed based our needs
+#define INTERVAL 5
+#define MAX_SLABS 1024
+#define LINE_BUFFER 256
+
+#define INIT_SNAPSHOT 1
+#define CHECK_SNAPSHOT 2
+
+typedef struct list list;
+
+typedef struct
+{
+    char name[MAX_NAME_LEN];   // slab-cache name
+    unsigned int active_objs;  // number of active objects
+    unsigned int num_objs;     // total number of objects
+    size_t objsize;            // size of each object in bytes
+    unsigned int objperslab;   // objects per slab
+    unsigned int pagesperslab; // pages per slab
+
+    double ema;
+    unsigned int prev_active_objs;
+    int monotonic_count;
+    float growth;
+    unsigned int baseline_active_objs;  // Starting point for long-term analysis
+} slabinfo;
+
+typedef struct
+{
+    int active_objs_diff; // number of active object difference
+    int num_objs_diff;    // total number of objects difference
+} diff;
+
+//struct list stores the slabinfo. Instread of
+//fixed sized array we are taking a double linkedlist
+typedef struct list{
+    slabinfo* slab;
+    list *prev;
+    list *next;
+}list;
+
+//linkedlist functions
+list* list_add(slabinfo new_slab);
+bool list_exist(slabinfo target);
+void list_trav(void);
+diff list_match(slabinfo target);
+void list_remove(slabinfo target);
+void list_del(void);
+int list_cnt(void);
+void init_slab_list();
+void parse_slabinfo(void);
+
+//exposing head pointer
+list *get_slab_list_head(void);
+
+//global head pointer and list size tracker
+static list* head = NULL;
+static int list_size = 0;
+
+//function to compare two slabinfo structs (based on name)
+bool slabinfo_equal(slabinfo a, slabinfo b) {
+    return strcmp(a.name, b.name) == 0;
+}
+
+//add new node to the linkedlist
+list* list_add(slabinfo new_slab) {
+    list* new_node = (list*)malloc(sizeof(list));
+    if (!new_node) {
+        perror("Failed to allocate memory for new node");
+        return NULL;
+    }
+
+    new_node->slab = (slabinfo*)malloc(sizeof(slabinfo));
+    if (!new_node->slab) {
+        perror("Failed to allocate memory for slabinfo");
+        free(new_node);
+        return NULL;
+    }
+
+    *(new_node->slab) = new_slab;
+    new_node->next = head;
+    new_node->prev = NULL;
+
+    if (head)
+        head->prev = new_node;
+
+    head = new_node;
+    list_size++;
+
+    return new_node;
+}
+
+//check if theres any node is present in the linkedlist or not
+bool list_exist(slabinfo target) {
+    list* temp = head;
+    while (temp) {
+        if (slabinfo_equal(*(temp->slab), target))
+            return true;
+        temp = temp->next;
+    }
+    return false;
+}
+
+//traverse the linkedlist
+void list_trav() {
+    list* temp = head;
+    while (temp) {
+        printf("Name: %-20s Active: %-6u Total: %-6u ObjSize: %-4zu Obj/Slab: %-4u Pages/Slab: %-2u\n",
+               temp->slab->name,
+               temp->slab->active_objs,
+               temp->slab->num_objs,
+               temp->slab->objsize,
+               temp->slab->objperslab,
+               temp->slab->pagesperslab);
+        temp = temp->next;
+    }
+}
+
+//match the linkedlist node
+diff list_match(slabinfo target) {
+    list* temp = head;
+    diff result = {0};
+
+    while (temp) {
+        if (slabinfo_equal(*(temp->slab), target)) {
+            //match found based on name
+            result.active_objs_diff = (int)target.active_objs - (int)temp->slab->active_objs;
+            result.num_objs_diff = (int)target.num_objs - (int)temp->slab->num_objs;
+
+            return result;
+        }
+        temp = temp->next;
+    }
+
+    printf("No match found for '%s'.\n", target.name);
+    return result;
+}
+
+//remove a node from linkedlist
+void list_remove(slabinfo target) {
+    list* temp = head;
+    while (temp) {
+        if (slabinfo_equal(*(temp->slab), target)) {
+            if (temp->prev)
+                temp->prev->next = temp->next;
+            else
+                head = temp->next;
+
+            if (temp->next)
+                temp->next->prev = temp->prev;
+
+            free(temp->slab);
+            free(temp);
+            list_size--;
+
+            printf("Removed slab: %s\n", target.name);
+            return;
+        }
+        temp = temp->next;
+    }
+    printf("Slab not found for removal.\n");
+}
+
+//delete the whole linkedlist
+void list_del() {
+    list* temp = head;
+    while (temp) {
+        list* next = temp->next;
+        free(temp->slab);
+        free(temp);
+        temp = next;
+    }
+    head = NULL;
+    list_size = 0;
+}
+
+//returns the total number of nodes in the
+//linkedlist
+int list_cnt() {
+    return list_size;
+}
+//uptill this contrinution from outer source except a littile bit mods to exisisting slabinfo struct
+
+// Accessor for other modules
+list *get_slab_list_head()
+{
+    return head;
+}
+
+void init_slab_list()
+{
+    // Initialize internal linked list (head is already global in code)
+    list_del(); // if needed to reset state
+}
+
+void parse_slabinfo()
+{
+    FILE *file = fopen(FILE_SLABINFO, "r");
+    if (!file) {
+        perror("cannot open /proc/slabinfo");
+        return;
+    }
+
+    char line[LINE_BUFFER];
+    slabinfo s;
+
+    // skip first two lines (headers)
+    fgets(line, sizeof(line), file);
+    fgets(line, sizeof(line), file);
+
+    // read each slab line
+    while (fgets(line, sizeof(line), file)) {
+        int matched = sscanf(line, "%s %u %u %zu %u %u",
+                             s.name, &s.active_objs, &s.num_objs,
+                             &s.objsize, &s.objperslab, &s.pagesperslab);
+
+        if (matched != 6)
+            continue;
+
+        if (!list_exist(s)) {
+            list_add(s);
+        } else {
+            // Update existing slab
+            list* temp = head;
+            while (temp) {
+                if (slabinfo_equal(*(temp->slab), s)) {
+                    // Save the previous value before updating
+                    temp->slab->prev_active_objs = temp->slab->active_objs;
+                    // Update with new values
+                    temp->slab->active_objs = s.active_objs;
+                    temp->slab->num_objs = s.num_objs;
+
+                    // Add after updating values (for debugging)
+                    //printf("DEBUG: Updated %s: old=%u new=%u\n",
+                    //       temp->slab->name, temp->slab->prev_active_objs, temp->slab->active_objs);
+
+                    break;
+                }
+                temp = temp->next;
+            }
+        }
+    }
+
+    fclose(file);
+}
+
+// Add this function:
+void show_long_term_growth()
+{
+    printf("\n--- Long-Term Growth Analysis ---\n");
+    list *cur = get_slab_list_head();
+    while (cur) {
+        float long_term_growth = 0;
+        if (cur->slab->baseline_active_objs > 0) {
+            long_term_growth = ((float)cur->slab->active_objs - cur->slab->baseline_active_objs) /
+                               (float)cur->slab->baseline_active_objs * 100.0f;
+        }
+
+        if (long_term_growth > 10.0f) {
+            printf("\033[1;35m[LONG-TERM] %s has grown %.1f%% since start\033[0m\n",
+                   cur->slab->name, long_term_growth);
+        }
+
+        cur = cur->next;
+    }
+}
+
+
+
+#endif // SLABINFOLIST_H
