@@ -1,7 +1,7 @@
 #include "vmstatlist.h"
 #include "slabinfolist.h"
 #include "analysis.h"
-#include "cstdint"
+#include "stdint.h"
 
 /*
 Initial State:
@@ -33,7 +33,7 @@ typedef struct
     size_t jvm_metaspace_allocated;
     size_t kernel_slab_allocated;
     float allocation_rate_variance;
-    allocation_pattern_t pattern_type;
+    //allocation_pattern_t pattern_type;
 } cross_layer_metric_t;
 
 int main()
