@@ -1,5 +1,6 @@
 build/
 .vscode/
+.cache/
 /.idea/.gitignore
 /.cache/clangd/index/analysis.h.2D658B4BA97A6EC6.idx
 /.cache/clangd/index/analysis.h.0256E27D1060CD29.idx
