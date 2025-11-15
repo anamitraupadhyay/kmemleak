@@ -5,9 +5,13 @@
 #ifndef KMEMLEAK_DATASTRUCTURES_H
 #define KMEMLEAK_DATASTRUCTURES_H
 
+typedef struct list{
+    struct list *prev, *next;
+}list;
+
 typedef struct {
   //datas made available by 'cat /proc/slabinfo'
-  struct list *list;
+  /*struct*/ list *list;
 }slabinfo;
 
 typedef struct {
@@ -20,8 +24,5 @@ typedef struct {
   struct list *list;
 }buddyinfo;
 
-typedef struct {
-    struct list *prev, *next;
-}list;
 
 #endif //KMEMLEAK_DATASTRUCTURES_H
