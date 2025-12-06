@@ -24,5 +24,38 @@ typedef struct {
   struct list *list;
 }buddyinfo;
 
+/*
+┌─────────────────────────────────────────────────────────┐
+│         SNAPSHOT (Common Container)                     │
+│  ┌────────────────┬────────────────┬────────────────┐   │
+│  │   Slab Data    │  Vmstat Data   │  Buddy Data    │   │
+│  │ (Independent)  │ (Independent)  │ (Independent)  │   │
+│  └────────────────┴────────────────┴────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+        ↓              ↓              ↓
+    Pipeline 1     Pipeline 2     Pipeline 3
+    (parallel)     (parallel)     (parallel)
+        ↓              ↓              ↓
+   Parse Slab    Parse Vmstat   Parse Buddy
+   Analyze Slab  Analyze Vmstat  Analyze Buddy
+        ↓              ↓              ↓
+    Slab Result   Vmstat Result  Buddy Result
+        └──────────────┬──────────────┘
+                       ↓
+              Correlation Layer
+                       ↓
+           Final Leak Assessment
+
+*/
+
+struct snapshot{
+    list* l;
+  union filetype{
+      struct slabinfo;
+      struct buddyinfo;//with no struct keyword it shows declaration does not declare anything
+      struct vmstat;//with struct* it displays declaration of anonymous struct must be definition
+  };
+};
+
 
 #endif //KMEMLEAK_DATASTRUCTURES_H

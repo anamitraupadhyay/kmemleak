@@ -1,6 +1,6 @@
 #include "vmstatlist.h"
 #include "slabinfolist.h"
-#include "SlabGrowthDetector/analysis.h"
+#include "analysis.h"
 #include "stdint.h"
 
 #define INTERVAL 5
