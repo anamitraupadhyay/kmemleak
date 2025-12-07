@@ -5,6 +5,7 @@
 #ifndef KMEMLEAK_DATASTRUCTURES_H
 #define KMEMLEAK_DATASTRUCTURES_H
 
+#include <stdlib.h>
 typedef struct list{
     struct list *prev, *next;
 }list;
@@ -18,6 +19,10 @@ typedef struct {
   //datas made available by 'cat /proc/vmstat'
   struct list *list;
 }vmstat;
+
+extern list headvmstat;
+extern list headslabinfo;
+extern list headbuddyinfo;
 
 typedef struct {
   //datas made available by 'cat /proc/buddyinfo'
@@ -48,9 +53,16 @@ typedef struct {
 
 */
 
+typedef enum filetype{
+    SLABINFO,
+    BUDDYINFO,
+    VMSTAT
+}filetype;
+
 struct snapshot{
+    filetype enumtype;
     list* l;
-  union filetype{
+  union filedata{
       struct slabinfo;
       struct buddyinfo;//with no struct keyword it shows declaration does not declare anything
       struct vmstat;//with struct* it displays declaration of anonymous struct must be definition
