@@ -5,7 +5,7 @@
 #ifndef KMEMLEAK_DATASTRUCTURES_H
 #define KMEMLEAK_DATASTRUCTURES_H
 
-#include <stdlib.h>
+//#include <stdlib.h>
 typedef struct list{
     struct list *prev, *next;
 }list;
@@ -20,9 +20,9 @@ typedef struct {
   struct list *list;
 }vmstat;
 
-extern list headvmstat;
-extern list headslabinfo;
-extern list headbuddyinfo;
+extern struct list *headvmstat;
+extern struct list headslabinfo;
+extern struct list headbuddyinfo;
 
 typedef struct {
   //datas made available by 'cat /proc/buddyinfo'
