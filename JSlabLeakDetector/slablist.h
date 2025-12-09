@@ -26,14 +26,14 @@ void slablisttraverse(slabinfo *s){
 
 struct snapshot* init_slab_list(){
     // Allocate snapshot structure
-    struct snapshot *slabs = (struct snapshot*)malloc(sizeof(struct snapshot));
+    struct snapshot *slabs = malloc(sizeof(struct snapshot));
     if (!slabs) {
         perror("Failed to allocate snapshot");
         return NULL;
     }
     
     // Allocate list node
-    slabs->l = (list*)malloc(sizeof(list));
+    slabs->l = malloc(sizeof(list));
     if (!slabs->l) {
         perror("Failed to allocate list node");
         free(slabs);
@@ -51,14 +51,14 @@ struct snapshot* init_slab_list(){
 
 void init_slab_list_noptr(){
     // Allocate snapshot structure
-    struct snapshot *slabs = (struct snapshot*)malloc(sizeof(struct snapshot));
+    struct snapshot *slabs = malloc(sizeof(struct snapshot));
     if (!slabs) {
         perror("Failed to allocate snapshot");
         return;
     }
     
     // Allocate list node
-    slabs->l = (list*)malloc(sizeof(list));
+    slabs->l = malloc(sizeof(list));
     if (!slabs->l) {
         perror("Failed to allocate list node");
         free(slabs);
