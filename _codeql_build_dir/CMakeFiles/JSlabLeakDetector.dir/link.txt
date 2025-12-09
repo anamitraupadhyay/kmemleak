@@ -1,1 +1,0 @@
-/home/runner/work/kmemleak/.codeql-scratch/dbs/cpp/working/autobuild/bin/cc -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/JSlabLeakDetector.dir/link.d CMakeFiles/JSlabLeakDetector.dir/JSlabLeakDetector/main.c.o CMakeFiles/JSlabLeakDetector.dir/JSlabLeakDetector/lists.c.o -o JSlabLeakDetector
