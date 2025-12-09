@@ -1,0 +1,1 @@
+/home/runner/work/kmemleak/.codeql-scratch/dbs/cpp/working/autobuild/bin/cc -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/SlabGrowthDetector.dir/link.d CMakeFiles/SlabGrowthDetector.dir/SlabGrowthDetector/main.c.o -o SlabGrowthDetector
