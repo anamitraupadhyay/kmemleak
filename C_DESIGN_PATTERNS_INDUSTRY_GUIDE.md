@@ -11,6 +11,8 @@ This guide explains C design patterns as they're actually used in industry, with
 3. [Design Choice Combinations](#design-choice-combinations)
 4. [Industry Usage Matrix](#industry-usage-matrix)
 5. [Real-World Examples](#real-world-examples)
+6. [Apple/Darwin Open Source Patterns](#apppledarwin-open-source-patterns)
+7. [Swift-Java-C Interop Guide](#swift-java-c-interop-guide)
 
 ---
 
@@ -706,6 +708,641 @@ void new_code_init(void) { }              // Match it
  */
 void list_init(struct list *list) { }
 ```
+
+---
+
+## Apple/Darwin Open Source Patterns
+
+Apple's open source projects (Darwin, XNU kernel, libdispatch, Swift runtime) provide excellent examples of modern C design patterns.
+
+### Pattern 1: Darwin/XNU Kernel (macOS/iOS Kernel)
+**Source:** [opensource.apple.com/source/xnu](https://opensource.apple.com/source/xnu/)
+
+```c
+// From xnu/bsd/sys/queue.h - Apple's queue implementation
+// Based on BSD but with Apple enhancements
+
+/*
+ * Circular queue definitions
+ */
+#define CIRCLEQ_HEAD(name, type)                \
+struct name {                                   \
+    struct type *cqh_first;     /* first element */     \
+    struct type *cqh_last;      /* last element */      \
+}
+
+#define CIRCLEQ_ENTRY(type)                     \
+struct {                                        \
+    struct type *cqe_next;      /* next element */      \
+    struct type *cqe_prev;      /* previous element */  \
+}
+
+// Example usage in XNU kernel
+struct proc {
+    pid_t p_pid;
+    char p_comm[MAXCOMLEN+1];
+    CIRCLEQ_ENTRY(proc) p_pglist;  // Process group list
+};
+
+CIRCLEQ_HEAD(proclist, proc) allproc;
+
+// Why Apple uses this:
+// ✓ Type-safe macros (catches errors at compile time)
+// ✓ Based on proven BSD patterns
+// ✓ Optimized for kernel use (no malloc in hot paths)
+// ✓ Clear naming convention
+```
+
+**Apple's Design Philosophy:**
+```
+Priorities:
+1. Safety: Type-safe macros catch mistakes
+2. Performance: Zero-cost abstractions
+3. Clarity: Self-documenting code
+4. Compatibility: Based on BSD, familiar to Unix developers
+
+Key Differences from Linux:
+- More type safety (macros are more explicit)
+- Better documentation comments
+- Focus on preventing mistakes over brevity
+```
+
+### Pattern 2: libdispatch (Grand Central Dispatch)
+**Source:** [opensource.apple.com/source/libdispatch](https://opensource.apple.com/source/libdispatch/)
+
+```c
+// From libdispatch/src/queue_internal.h
+// Apple's concurrent queue implementation
+
+struct dispatch_queue_s {
+    DISPATCH_OBJECT_HEADER(queue);
+    DISPATCH_QUEUE_HEADER;
+    uint32_t dq_width;
+    struct dispatch_object_s *dq_items_tail;
+    struct dispatch_object_s *dq_items_head;
+};
+
+// Pattern: Intrusive list with type safety
+#define DISPATCH_OBJECT_HEADER(x) \
+    struct dispatch_##x##_s *volatile do_next; \
+    struct dispatch_queue_s *do_targetq; \
+    void *do_ctxt; \
+    void *do_finalizer;
+
+// Why this pattern:
+// ✓ Lock-free operations (atomic CAS)
+// ✓ Cache-friendly layout
+// ✓ Type-safe despite C limitations
+// ✓ Optimized for ARM64 and x86_64
+```
+
+**Industry Lesson:**
+```c
+// Apple teaches: Use macros for type safety, not just convenience
+// Bad: Generic void* everywhere
+void queue_add(void *queue, void *item);  // Lose type info
+
+// Good: Macro-generated type-safe versions
+#define QUEUE_ADD(Q, I) \
+    _Generic((Q), \
+        dispatch_queue_t: _dispatch_queue_add, \
+        my_queue_t: _my_queue_add \
+    )((Q), (I))
+
+// Modern C (C11) gives us _Generic for type safety
+```
+
+### Pattern 3: Swift Runtime (Objective-C Bridge)
+**Source:** [github.com/apple/swift](https://github.com/apple/swift)
+
+```c
+// From swift/stdlib/public/runtime/Private.h
+// How Swift's C layer manages memory
+
+typedef struct HeapObject {
+    void *metadata;
+    uint32_t refcount;
+    uint32_t weakRefcount;
+} HeapObject;
+
+// Intrusive reference counting (like Linux kernel's kref)
+static inline void swift_retain(HeapObject *obj) {
+    __atomic_fetch_add(&obj->refcount, 1, __ATOMIC_RELAXED);
+}
+
+static inline void swift_release(HeapObject *obj) {
+    if (__atomic_fetch_sub(&obj->refcount, 1, __ATOMIC_RELEASE) == 1) {
+        __atomic_thread_fence(__ATOMIC_ACQUIRE);
+        swift_deallocObject(obj);
+    }
+}
+
+// Why this pattern:
+// ✓ Atomic operations for thread safety
+// ✓ No locks needed (lock-free)
+// ✓ Intrusive (no separate refcount allocation)
+// ✓ Compatible with Objective-C retain/release
+```
+
+**Apple's Memory Management Evolution:**
+```
+1. Classic Mac OS: Manual malloc/free
+2. Objective-C: retain/release (manual)
+3. Objective-C: ARC (compiler-inserted retain/release)
+4. Swift: Automatic reference counting in runtime
+
+Lesson: C layer provides foundation for higher-level abstractions
+```
+
+### Pattern 4: Core Foundation (CF Types)
+**Source:** [opensource.apple.com/source/CF](https://opensource.apple.com/source/CF/)
+
+```c
+// From CoreFoundation/CFRuntime.h
+// How Apple creates "objects" in C
+
+typedef const struct __CFString *CFStringRef;
+typedef struct __CFString *CFMutableStringRef;
+
+// Internal structure (opaque to users)
+struct __CFString {
+    CFRuntimeBase base;  // Common header for all CF types
+    const uint8_t *data;
+    CFIndex length;
+    CFAllocatorRef allocator;
+};
+
+// Public API (opaque handle pattern)
+CFStringRef CFStringCreateWithCString(
+    CFAllocatorRef alloc,
+    const char *cStr,
+    CFStringEncoding encoding
+);
+
+void CFRelease(CFTypeRef cf);
+CFTypeRef CFRetain(CFTypeRef cf);
+
+// Why this pattern:
+// ✓ Opaque handles (ABI stability)
+// ✓ Reference counting (memory safety)
+// ✓ Toll-free bridging with Objective-C
+// ✓ Custom allocators (flexibility)
+```
+
+**Industry Standard:**
+```
+Apple's CF pattern influenced:
+- Windows COM (similar opaque handles)
+- GObject (GNOME's object system)
+- Many modern C libraries
+
+Key: Separate interface from implementation
+```
+
+---
+
+## Swift-Java-C Interop Guide
+
+### The Challenge: Making C Work with Both Swift and Java
+
+When building C code that needs to work with both Swift and Java (e.g., cross-platform libraries), you face different constraints:
+
+```
+Swift Constraints:
+- Uses ARC (automatic reference counting)
+- Prefers value types (structs)
+- Strong type system
+- No implicit conversions
+
+Java Constraints:
+- Uses GC (garbage collection)
+- Everything is a reference (except primitives)
+- Reflection-heavy
+- JNI has specific calling conventions
+
+C Must Provide:
+- Manual memory management OR
+- Hooks for both ARC and GC
+```
+
+### Pattern 1: Shared C Core with Language-Specific Wrappers
+
+**Architecture:**
+```
+┌─────────────────────────────────────────┐
+│           Swift Layer                   │
+│  (Swift wrapper calling C functions)    │
+├─────────────────────────────────────────┤
+│                                         │
+│         C Core Library                  │
+│  (Pure C, no Swift/Java knowledge)      │
+│                                         │
+├─────────────────────────────────────────┤
+│            Java Layer (JNI)             │
+│  (Java native methods calling C)        │
+└─────────────────────────────────────────┘
+```
+
+**Example: Cross-Platform List Library**
+
+```c
+// ============================================
+// list_core.h - Pure C core (language-agnostic)
+// ============================================
+
+#ifndef LIST_CORE_H
+#define LIST_CORE_H
+
+#include <stddef.h>
+#include <stdbool.h>
+
+// Opaque handle (works with both Swift and Java)
+typedef struct list_s *list_t;
+
+// C API (simple, no language-specific features)
+list_t list_create(void);
+void list_destroy(list_t list);
+bool list_append(list_t list, void *data);
+void* list_get(list_t list, size_t index);
+size_t list_count(list_t list);
+
+// Callback for cleanup (used by both Swift and Java)
+typedef void (*list_item_destructor_t)(void *item);
+void list_set_destructor(list_t list, list_item_destructor_t destructor);
+
+#endif
+
+// ============================================
+// list_core.c - Implementation
+// ============================================
+
+struct list_node {
+    void *data;
+    struct list_node *next;
+};
+
+struct list_s {
+    struct list_node *head;
+    struct list_node *tail;
+    size_t count;
+    list_item_destructor_t destructor;  // Language-specific cleanup
+};
+
+list_t list_create(void) {
+    list_t list = malloc(sizeof(struct list_s));
+    if (!list) return NULL;
+    list->head = list->tail = NULL;
+    list->count = 0;
+    list->destructor = NULL;
+    return list;
+}
+
+void list_destroy(list_t list) {
+    if (!list) return;
+    
+    struct list_node *node = list->head;
+    while (node) {
+        struct list_node *next = node->next;
+        
+        // Call language-specific destructor if set
+        if (list->destructor && node->data) {
+            list->destructor(node->data);
+        }
+        
+        free(node);
+        node = next;
+    }
+    free(list);
+}
+
+// ... rest of implementation
+```
+
+### Pattern 2: Swift Wrapper (Swift-Friendly API)
+
+```swift
+// ============================================
+// List.swift - Swift wrapper over C core
+// ============================================
+
+import Foundation
+
+// Swift class that manages C list lifetime with ARC
+public class List<T: AnyObject> {
+    private var cList: OpaquePointer?
+    
+    public init() {
+        cList = list_create()
+        
+        // Set up destructor for Swift ARC
+        list_set_destructor(cList) { item in
+            // Release Swift object when C list removes it
+            let obj = Unmanaged<AnyObject>.fromOpaque(item!)
+            obj.release()
+        }
+    }
+    
+    deinit {
+        // ARC automatically calls this when no more references
+        list_destroy(cList)
+    }
+    
+    public func append(_ item: T) {
+        // Retain for C storage (manual reference counting)
+        let retained = Unmanaged.passRetained(item)
+        list_append(cList, retained.toOpaque())
+    }
+    
+    public func get(at index: Int) -> T? {
+        guard let ptr = list_get(cList, index) else {
+            return nil
+        }
+        // Get Swift object without transferring ownership
+        let obj = Unmanaged<T>.fromOpaque(ptr)
+        return obj.takeUnretainedValue()
+    }
+    
+    public var count: Int {
+        return Int(list_count(cList))
+    }
+}
+
+// Usage in Swift (feels native):
+let myList = List<MyClass>()
+myList.append(MyClass())
+// ARC automatically cleans up when myList goes out of scope
+```
+
+### Pattern 3: Java Wrapper (JNI Bridge)
+
+```java
+// ============================================
+// List.java - Java wrapper over C core
+// ============================================
+
+public class List<T> implements AutoCloseable {
+    // Native method declarations
+    private static native long nativeCreate();
+    private static native void nativeDestroy(long handle);
+    private static native boolean nativeAppend(long handle, long objPtr);
+    private static native long nativeGet(long handle, int index);
+    private static native int nativeCount(long handle);
+    
+    static {
+        System.loadLibrary("list_jni");
+    }
+    
+    private long nativeHandle;
+    private List<WeakReference<T>> references = new ArrayList<>();
+    
+    public List() {
+        nativeHandle = nativeCreate();
+        // No destructor needed - Java GC handles it
+    }
+    
+    @Override
+    public void close() {
+        if (nativeHandle != 0) {
+            nativeDestroy(nativeHandle);
+            nativeHandle = 0;
+        }
+    }
+    
+    public void append(T item) {
+        // Keep Java reference so GC doesn't collect it
+        references.add(new WeakReference<>(item));
+        
+        // Pass pointer to C
+        long ptr = getNativePointer(item);
+        nativeAppend(nativeHandle, ptr);
+    }
+    
+    // ... rest of implementation
+}
+```
+
+```c
+// ============================================
+// list_jni.c - JNI bridge implementation
+// ============================================
+
+#include <jni.h>
+#include "list_core.h"
+
+// Java object wrapper for C storage
+typedef struct {
+    JNIEnv *env;
+    jobject globalRef;  // Global reference (GC won't collect)
+} java_object_wrapper;
+
+// Destructor called when C list removes item
+static void java_object_destructor(void *item) {
+    java_object_wrapper *wrapper = item;
+    // Delete global reference so GC can collect
+    (*wrapper->env)->DeleteGlobalRef(wrapper->env, wrapper->globalRef);
+    free(wrapper);
+}
+
+JNIEXPORT jlong JNICALL
+Java_List_nativeCreate(JNIEnv *env, jclass cls) {
+    list_t list = list_create();
+    list_set_destructor(list, java_object_destructor);
+    return (jlong)list;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_List_nativeAppend(JNIEnv *env, jclass cls, jlong handle, jobject obj) {
+    list_t list = (list_t)handle;
+    
+    // Create wrapper with global reference (prevents GC)
+    java_object_wrapper *wrapper = malloc(sizeof(java_object_wrapper));
+    wrapper->env = env;
+    wrapper->globalRef = (*env)->NewGlobalRef(env, obj);
+    
+    return list_append(list, wrapper) ? JNI_TRUE : JNI_FALSE;
+}
+
+// ... rest of JNI implementation
+```
+
+### Pattern 4: Design Principles for Multi-Language C Code
+
+```c
+// ============================================
+// DO's and DON'Ts for Swift/Java compatible C
+// ============================================
+
+// ✓ DO: Use opaque pointers
+typedef struct my_object_s *my_object_t;  // Good
+
+// ✗ DON'T: Expose struct details
+struct my_object {  // Bad - hard to change later
+    int field;
+};
+
+// ✓ DO: Use simple C types in API
+bool my_function(int count, const char *name);  // Good
+
+// ✗ DON'T: Use complex C types
+bool my_function(size_t count, const uint8_t *name);  // Bad - mapping issues
+
+// ✓ DO: Provide cleanup callbacks
+typedef void (*cleanup_fn)(void *user_data);
+void set_cleanup(my_object_t obj, cleanup_fn fn, void *data);
+
+// ✗ DON'T: Assume memory model
+void my_function(void *obj) {
+    free(obj);  // Bad - might be Swift ARC or Java GC managed
+}
+
+// ✓ DO: Return status codes
+int my_function(my_object_t obj, result_t *out_result);
+
+// ✗ DON'T: Use errno or thread-locals
+int my_function() {
+    errno = EINVAL;  // Bad - doesn't work well with Swift/Java
+    return -1;
+}
+
+// ✓ DO: Make threading model explicit
+// Declare if functions are thread-safe or require locking
+void my_function_locked(my_object_t obj);    // Requires external lock
+void my_function_safe(my_object_t obj);      // Internally thread-safe
+
+// ✗ DON'T: Use global state
+static int global_counter;  // Bad - race conditions
+
+// ✓ DO: Use context objects
+typedef struct context_s *context_t;
+context_t create_context(void);
+void do_work(context_t ctx);  // All state in context
+```
+
+### Pattern 5: Real-World Example - JSON Parser for Swift & Java
+
+```c
+// ============================================
+// json_parser.h - Multi-language JSON parser
+// ============================================
+
+typedef struct json_value_s *json_value_t;
+
+// Parse JSON from string
+json_value_t json_parse(const char *str, size_t len);
+
+// Query functions (safe for any language)
+typedef enum {
+    JSON_NULL,
+    JSON_BOOL,
+    JSON_NUMBER,
+    JSON_STRING,
+    JSON_ARRAY,
+    JSON_OBJECT
+} json_type_t;
+
+json_type_t json_get_type(json_value_t value);
+bool json_get_bool(json_value_t value);
+double json_get_number(json_value_t value);
+const char *json_get_string(json_value_t value);
+
+// Array operations
+size_t json_array_size(json_value_t array);
+json_value_t json_array_get(json_value_t array, size_t index);
+
+// Object operations  
+json_value_t json_object_get(json_value_t object, const char *key);
+
+// Cleanup (language provides destructor callback)
+typedef void (*json_free_fn)(void *ptr);
+void json_set_allocator(json_free_fn free_fn);
+void json_free(json_value_t value);
+```
+
+**Swift Usage:**
+```swift
+class JSONValue {
+    private var handle: OpaquePointer?
+    
+    init?(string: String) {
+        json_set_allocator { ptr in
+            free(ptr)  // Standard free for Swift
+        }
+        handle = json_parse(string, string.utf8.count)
+    }
+    
+    deinit {
+        json_free(handle)
+    }
+    
+    var asString: String? {
+        guard json_get_type(handle) == JSON_STRING else { return nil }
+        return String(cString: json_get_string(handle))
+    }
+}
+```
+
+**Java Usage:**
+```java
+public class JSONValue implements AutoCloseable {
+    private long nativeHandle;
+    
+    static {
+        // Set up Java-compatible allocator
+        setAllocator();
+    }
+    
+    private static native void setAllocator();
+    private static native long parse(String str);
+    
+    public JSONValue(String json) {
+        nativeHandle = parse(json);
+    }
+    
+    @Override
+    public void close() {
+        if (nativeHandle != 0) {
+            nativeFree(nativeHandle);
+        }
+    }
+}
+```
+
+### Summary: C Design for Swift/Java Compatibility
+
+**Key Principles:**
+
+1. **Opaque Types:** Use handles, not exposed structs
+2. **Simple Types:** Stick to int, bool, char*, avoid size_t/uint variants
+3. **Callbacks:** Let each language handle its memory model
+4. **No Globals:** Use context objects for state
+5. **Clear Ownership:** Document who owns/frees memory
+6. **Thread Safety:** Be explicit about thread requirements
+7. **Error Handling:** Return status codes, not errno
+8. **Allocator Hooks:** Support custom allocation
+
+**Pattern Matrix:**
+
+```
+┌──────────────────┬─────────────────┬─────────────────┬──────────────────┐
+│ Feature          │ C Core          │ Swift Wrapper   │ Java Wrapper     │
+├──────────────────┼─────────────────┼─────────────────┼──────────────────┤
+│ Memory Model     │ Manual          │ ARC             │ GC               │
+│ Cleanup Hook     │ Callback        │ deinit          │ finalize/close   │
+│ Threading        │ Explicit        │ Actor model     │ synchronized     │
+│ Error Handling   │ Return codes    │ throw/try       │ Exception        │
+│ Type Safety      │ Opaque handles  │ Generic classes │ Generic classes  │
+│ Ownership        │ Documented      │ Implicit (ARC)  │ Implicit (GC)    │
+└──────────────────┴─────────────────┴─────────────────┴──────────────────┘
+```
+
+**For Contributing to Swift-Java C Shims:**
+
+1. Study Apple's Swift runtime C code
+2. Study OpenJDK's JNI implementations
+3. Keep C layer minimal and language-agnostic
+4. Provide language-specific wrappers that feel native
+5. Test memory behavior in both environments
+6. Document ownership and threading clearly
 
 ---
 
