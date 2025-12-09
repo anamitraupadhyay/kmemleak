@@ -8,7 +8,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 add_executable(kmemleak
         SlabGrowthDetector/main.c
         JSlabLeakDetector/main.c
-        JSlabLeakDetector/DataStructures.c
+        JSlabLeakDetector/lists.c
         JSlabLeakDetector/DataStructures.h
 )
 
