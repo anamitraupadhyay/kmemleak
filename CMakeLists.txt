@@ -5,24 +5,35 @@ project(kmemleak LANGUAGES C)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-add_executable(kmemleak
+# SlabGrowthDetector executable
+add_executable(SlabGrowthDetector
         SlabGrowthDetector/main.c
-        JSlabLeakDetector/main.c
-        JSlabLeakDetector/lists.c
-        JSlabLeakDetector/DataStructures.h
-)
-
-target_sources(kmemleak PRIVATE
         SlabGrowthDetector/analysis.h
         SlabGrowthDetector/slabinfolist.h
         SlabGrowthDetector/vmstatlist.h
 )
+
+# JSlabLeakDetector executable
+add_executable(JSlabLeakDetector
+        JSlabLeakDetector/main.c
+        JSlabLeakDetector/lists.c
+        JSlabLeakDetector/DataStructures.h
+        JSlabLeakDetector/slablist.h
+)
+
+# SingleFileJSlab executable
+add_executable(SingleFileJSlab
+        SingleFileJSlab/main.c
+)
+
+# Link math library for SingleFileJSlab
+target_link_libraries(SingleFileJSlab PRIVATE m)
 
 add_custom_target(qmltests SOURCES SlabGrowthDetector/tst_testcases.qml)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(GNUInstallDirs)
-install(TARGETS kmemleak
+install(TARGETS SlabGrowthDetector JSlabLeakDetector SingleFileJSlab
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

@@ -21,3 +21,9 @@ build/
 /.idea/vcs.xml
 /.cache/clangd/index/vmstatlist.h.37C8513177831A76.idx
 /.cache/clangd/index/vmstatlist.h.292BDFB7831F30E9.idx
+
+# Build artifacts
+*.o
+*.so
+*.a
+*.exe
