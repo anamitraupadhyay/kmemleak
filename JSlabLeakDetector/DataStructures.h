@@ -12,7 +12,7 @@ typedef struct list{
 
 typedef struct {
   //datas made available by 'cat /proc/slabinfo'
-  /*struct*/ list *list;
+  list *list;
 }slabinfo;
 
 typedef struct {
@@ -21,8 +21,8 @@ typedef struct {
 }vmstat;
 
 extern struct list *headvmstat;
-extern struct list headslabinfo;
-extern struct list headbuddyinfo;
+extern struct list *headslabinfo;
+extern struct list *headbuddyinfo;
 
 typedef struct {
   //datas made available by 'cat /proc/buddyinfo'
@@ -62,11 +62,11 @@ typedef enum filetype{
 struct snapshot{
     filetype enumtype;
     list* l;
-  union filedata{
-      struct slabinfo;
-      struct buddyinfo;//with no struct keyword it shows declaration does not declare anything
-      struct vmstat;//with struct* it displays declaration of anonymous struct must be definition
-  };
+    union filedata{
+        slabinfo slab;
+        buddyinfo buddy;
+        vmstat vm;
+    } data;
 };
 
 
