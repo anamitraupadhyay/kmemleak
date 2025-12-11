@@ -3,54 +3,46 @@
 #include <stdlib.h>
 //#include_next "DataStructures.h"
 
-void readslabs(snapshot *s){
-    FILE *Stream = fopen_s("/proc/slabinfo","r");
-    if(!Stream){
-        return;
+void readslabs(struct snapshot *s) { // when struct was not written-Must use 'struct'
+                              // tag to refer to type 'snapshot
+  FILE *Stream = fopen("/proc/slabinfo", "r");
+  if (!Stream) {
+    return;
+  }
+  int someslabdata;
+  char Sparsedword[100];
+  char Buffer[256];
+  if (Stream) { // why fp is show as int * fp in recommendation in zed
+    // sscanf(), fgets, fscanf how many are there? how to optimally choose in
+    // betweem
+    while (fgets(Buffer, sizeof(Buffer), Stream) !=
+           NULL) { // remove the '*' ptr and issue gone, ow yes
+                //Stream is already a pointer that is *Stream points to the file
+                if (sscanf(Buffer, "%s", Sparsedword) == 1) {
+                  printf("%s",Sparsedword);
+      }
     }
-    int someslabdata;
-    char Buffer[256];
-    if (Stream) {//why fp is show as int * fp in recommendation in zed
-        //sscanf(), fgets, fscanf how many are there? how to optimally choose in betweem
-        while (fgets(Buffer,sizeof(Buffer),*Stream)!=NULL) {
-            sscanf_s("%s",Buffer);
-        }
-    }
+  }
+  fclose(Stream);
+  return;
 }
 
 void slablisttraverse(slabinfo *s){
     //
 }
 
-snapshot* init_slab_list(){//void init_slab_list is it required to have snapshot* instead of void
-    snapshot *slabs = (snapshot*)malloc(sizeof(slabinfo));
+struct snapshot* init_slab_list(){
+    struct snapshot *slabs = (struct snapshot*)malloc(sizeof(struct snapshot));
     
     slabs->enumtype = SLABINFO;
     
-    /*(&headvmstat)->prev = (&slabs);
-    (&headvmstat)->next = (&slabs);*/
-    
-    //Now, *connect* the new slab list to the other lists.
-    slabs->l->prev = &headslabinfo;         // Connect the new slab list to the headslabinfo list.
-    slabs->l->next = &headslabinfo;     // Connect to headslabinfo's next list
-
     return slabs;
 }
 
-void init_slab_list_noptr(){//void init_slab_list is it required to have snapshot* instead of void
-    snapshot *slabs = (snapshot*)malloc(sizeof(slabinfo));
+void init_slab_list_noptr(){
+    struct snapshot *slabs = (struct snapshot*)malloc(sizeof(struct snapshot));
     
     slabs->enumtype = SLABINFO;
     
-    /*(&headvmstat)->prev = (&slabs);
-    (&headvmstat)->next = (&slabs);*/
-    
-    //Now, *connect* the new slab list to the other lists.
-    //slabs->l->prev = &headslabinfo;// Connect the new slab list to the headslabinfo list.
-    // slabs->l->next = &headslabinfo;// Connect to headslabinfo's next list
-    headvmstat->next = slabs;
-    headvmstat->prev = NULL;
-    
-
     return;
 }

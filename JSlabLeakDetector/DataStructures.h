@@ -5,28 +5,31 @@
 #ifndef KMEMLEAK_DATASTRUCTURES_H
 #define KMEMLEAK_DATASTRUCTURES_H
 
-//#include <stdlib.h>
+#include <stddef.h>
+
+#define getsnapshot(ptr) ((snapshot*)((char*)(ptr)-offsetof(snapshot,l)))
+
 typedef struct list{
     struct list *prev, *next;
 }list;
 
 typedef struct {
   //datas made available by 'cat /proc/slabinfo'
-  /*struct*/ list *list;
+  /*struct*/ list list;
 }slabinfo;
 
 typedef struct {
   //datas made available by 'cat /proc/vmstat'
-  struct list *list;
+  struct list list;
 }vmstat;
 
-extern struct list *headvmstat;
-extern struct list headslabinfo;
-extern struct list headbuddyinfo;
+extern struct list *headvmstat;//would have been lot easier
+extern struct list *headslabinfo;//if the ptr instead of
+extern struct list *headbuddyinfo;//list it was snapshot's
 
 typedef struct {
   //datas made available by 'cat /proc/buddyinfo'
-  struct list *list;
+  struct list list;
 }buddyinfo;
 
 /*
@@ -59,14 +62,17 @@ typedef enum filetype{
     VMSTAT
 }filetype;
 
-struct snapshot{
+struct snapshot{//offcourse i didnt typedef'd it and refering would require struct keyword
     filetype enumtype;
-    list* l;
+    list l;//never do *l its pointing out of scope of snapshot malloc
   union filedata{
-      struct slabinfo;
-      struct buddyinfo;//with no struct keyword it shows declaration does not declare anything
-      struct vmstat;//with struct* it displays declaration of anonymous struct must be definition
-  };
+    /*struct*/ slabinfo *svar; // when did struct slabinfo svar-Field has incomplete
+                          // type 'struct slabinfo'
+    buddyinfo *bvar; // with no struct keyword it shows declaration
+                    // does not declare anything
+    vmstat *vvar;    // with struct* it displays declaration of anonymous struct
+                 // must be definition
+  }filedata;
 };
 
 
