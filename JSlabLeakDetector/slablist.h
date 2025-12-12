@@ -59,14 +59,7 @@ void init_slab_list_noptr() {
     free(slabs);
     return;
   }
-  slabs->l = *(list *) malloc(sizeof(list)); // Assigning to 'list'
-                                           // from incompatible type 'list *'
-  // quick fix was to add * at "" = * "";
-  if (!slabs->l) { // Invalid argument type 'list' (aka 'struct list') to unary
-                   // expression as !slabs->l condition
-    free(slabs); // Attempt to call free on non-heap object 'l'
-    return;
-  }
+  
 
   if (headslabinfo == NULL) {
     headslabinfo->next = &slabs->l; // recovery should happen with GET_SNAPSHOT
