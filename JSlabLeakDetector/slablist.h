@@ -32,11 +32,24 @@ void slablisttraverse(snapshot *s){
 }
 
 struct snapshot* init_slab_list(){
-    struct snapshot *slabs = (struct snapshot*)malloc(sizeof(struct snapshot));
-    
-    slabs->enumtype = SLABINFO;
-    
-    return slabs;
+  struct snapshot *slabs = (struct snapshot *)malloc(sizeof(struct snapshot));
+
+  /*
+  snapshot* init_slab_list(void) {
+    // Returns pointer OR NULL on error
+}
+
+// Usage
+snapshot *slab_head = init_slab_list();
+if (!slab_head) {
+    // Handle error
+    exit(EXIT_FAILURE);
+}
+  */
+
+  slabs->enumtype = SLABINFO;
+
+  return slabs;
 }
 
 void init_slab_list_noptr() {
@@ -46,11 +59,12 @@ void init_slab_list_noptr() {
     free(slabs);
     return;
   }
-  slabs->l = *(list *)malloc(sizeof(list)); // Assigning to 'list'
+  slabs->l = *(list *) malloc(sizeof(list)); // Assigning to 'list'
                                            // from incompatible type 'list *'
   // quick fix was to add * at "" = * "";
-  if (!slabs->l) {
-    free(&slabs->l); // Attempt to call free on non-heap object 'l'
+  if (!slabs->l) { // Invalid argument type 'list' (aka 'struct list') to unary
+                   // expression as !slabs->l condition
+    free(slabs); // Attempt to call free on non-heap object 'l'
     return;
   }
 
