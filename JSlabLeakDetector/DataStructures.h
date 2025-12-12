@@ -7,7 +7,7 @@
 
 #include <stddef.h>
 
-#define getsnapshot(ptr) ((snapshot*)((char*)(ptr)-offsetof(snapshot,l)))
+#define GET_SNAPSHOT(ptr) ((snapshot*)((char*)(ptr)-offsetof(snapshot,l)))
 
 typedef struct list{
     struct list *prev, *next;
@@ -62,7 +62,7 @@ typedef enum filetype{
     VMSTAT
 }filetype;
 
-struct snapshot{//offcourse i didnt typedef'd it and refering would require struct keyword
+typedef struct snapshot{//offcourse i didnt typedef'd it and refering would require struct keyword
     filetype enumtype;
     list l;//never do *l its pointing out of scope of snapshot malloc
   union filedata{
@@ -73,7 +73,7 @@ struct snapshot{//offcourse i didnt typedef'd it and refering would require stru
     vmstat *vvar;    // with struct* it displays declaration of anonymous struct
                  // must be definition
   }filedata;
-};
+}snapshot;
 
 
 #endif //KMEMLEAK_DATASTRUCTURES_H

@@ -27,7 +27,7 @@ void readslabs(struct snapshot *s) { // when struct was not written-Must use 'st
   return;
 }
 
-void slablisttraverse(slabinfo *s){
+void slablisttraverse(snapshot *s){
     //
 }
 
@@ -39,10 +39,36 @@ struct snapshot* init_slab_list(){
     return slabs;
 }
 
-void init_slab_list_noptr(){
-    struct snapshot *slabs = (struct snapshot*)malloc(sizeof(struct snapshot));
-    
-    slabs->enumtype = SLABINFO;
-    
+void init_slab_list_noptr() {
+
+  struct snapshot *slabs = (struct snapshot *)malloc(sizeof(struct snapshot));
+  if (!slabs) {
+    free(slabs);
     return;
+  }
+  slabs->l = *(list *)malloc(sizeof(list)); // Assigning to 'list'
+                                           // from incompatible type 'list *'
+  // quick fix was to add * at "" = * "";
+  if (!slabs->l) {
+    free(&slabs->l); // Attempt to call free on non-heap object 'l'
+    return;
+  }
+
+  if (headslabinfo == NULL) {
+    headslabinfo->next = &slabs->l; // recovery should happen with GET_SNAPSHOT
+    headslabinfo->prev =
+        &slabs->l; // GET_SNAPSHOT(&slabs->l) is dataype conflict
+
+    slabs->l.prev = headslabinfo;
+    slabs->l.next = NULL; // NULL is a macro = ((void*)0)
+  } else {
+  //
+  }
+
+  //
+
+  slabs->enumtype = SLABINFO; // invalid and doesnt happen as for proper linking
+                              // the macro is required
+
+  return;
 }
