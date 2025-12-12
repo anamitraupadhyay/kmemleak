@@ -59,7 +59,8 @@ void init_slab_list_noptr() {
     free(slabs);
     return;
   }
-  
+
+  //
 
   if (headslabinfo == NULL) {
     headslabinfo->next = &slabs->l; // recovery should happen with GET_SNAPSHOT
@@ -72,10 +73,16 @@ void init_slab_list_noptr() {
   //
   }
 
-  //
-
   slabs->enumtype = SLABINFO; // invalid and doesnt happen as for proper linking
                               // the macro is required
 
+  slabs->filedata.svar = malloc(sizeof(*slabs->filedata.svar));
+  if (!slabs->filedata.svar) {
+    free(slabs);
+    return;
+  }
+  
+  //
+  slabs->filedata.bvar = NULL; slabs->filedata.vvar = NULL;
   return;
 }
