@@ -61,10 +61,8 @@ void init_slab_list_noptr() {
     return;
   }
 
-  //
-
-  slabs->enumtype = SLABINFO; // invalid and doesnt happen as for proper linking
-                              // the macro is required
+  //the macro is only required for traversals not here
+  slabs->enumtype = SLABINFO; 
 
   slabs->filedata.svar = malloc(sizeof(*slabs->filedata.svar));
   if (!slabs->filedata.svar) {
