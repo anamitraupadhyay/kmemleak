@@ -62,17 +62,6 @@ void init_slab_list_noptr() {
 
   //
 
-  if (headslabinfo == NULL) {
-    headslabinfo->next = &slabs->l; // recovery should happen with GET_SNAPSHOT
-    headslabinfo->prev =
-        &slabs->l; // GET_SNAPSHOT(&slabs->l) is dataype conflict
-
-    slabs->l.prev = headslabinfo;
-    slabs->l.next = NULL; // NULL is a macro = ((void*)0)
-  } else {
-  //
-  }
-
   slabs->enumtype = SLABINFO; // invalid and doesnt happen as for proper linking
                               // the macro is required
 
@@ -82,7 +71,25 @@ void init_slab_list_noptr() {
     return;
   }
   
-  //
-  slabs->filedata.bvar = NULL; slabs->filedata.vvar = NULL;
+  //not needed fields, but is this necessary as its parts of union
+  slabs->filedata.bvar = NULL;
+  slabs->filedata.vvar = NULL;
+
+  //initing the fields to set it later
+  slabs->l.next = NULL;
+  slabs->l.prev = NULL;
+
+  //setting the pointers of *headslabs and *slabs
+  if (headslabinfo == NULL) {
+    headslabinfo->next = &slabs->l; // recovery should happen with GET_SNAPSHOT
+    headslabinfo->prev =
+        &slabs->l; // GET_SNAPSHOT(&slabs->l) is dataype conflict
+
+    slabs->l.prev = headslabinfo;
+    slabs->l.next = NULL; // NULL is a macro = ((void*)0)
+  } else {
+    //
+  }
+
   return;
 }
