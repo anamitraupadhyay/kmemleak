@@ -54,9 +54,10 @@ if (!slab_head) {
 
 void init_slab_list_noptr() {
 
-  struct snapshot *slabs = (struct snapshot *)malloc(sizeof(struct snapshot));
+  struct snapshot *slabs;
+  slabs = (struct snapshot *)malloc(sizeof(struct snapshot));
   if (!slabs) {
-    free(slabs);
+    //free(slabs); //freeing null !makes sense
     return;
   }
 
@@ -71,9 +72,9 @@ void init_slab_list_noptr() {
     return;
   }
   
-  //not needed fields, but is this necessary as its parts of union
-  slabs->filedata.bvar = NULL;
-  slabs->filedata.vvar = NULL;
+  //overrriding the union's behaviour
+  //slabs->filedata.bvar = NULL;
+  //slabs->filedata.vvar = NULL;
 
   //initing the fields to set it later
   slabs->l.next = NULL;
@@ -81,14 +82,32 @@ void init_slab_list_noptr() {
 
   //setting the pointers of *headslabs and *slabs
   if (headslabinfo == NULL) {
-    headslabinfo->next = &slabs->l; // recovery should happen with GET_SNAPSHOT
-    headslabinfo->prev =
-        &slabs->l; // GET_SNAPSHOT(&slabs->l) is dataype conflict
+    headslabinfo/*->next*/ = &slabs->l; // recovery should happen with GET_SNAPSHOT
+    //headslabinfo->prev =&slabs->l; // GET_SNAPSHOT(&slabs->l) is dataype conflict
 
     slabs->l.prev = headslabinfo;
     slabs->l.next = NULL; // NULL is a macro = ((void*)0)
   } else {
-    //
+    // above was the case when its empty
+    // and due to no malloc of list *l
+    // we didnt had to deal with its list pre v and next
+    // but here its assumed that it has those entries
+    // but better to have a check to proceed
+    // as it could be headslabinfo was just pointing to other and didnt had
+    // those declarations too
+    if (!headslabinfo->next && !headslabinfo->prev) {
+      headslabinfo = NULL;//setting it null reffering the 3rd last comments above
+      headslabinfo = &slabs->l;
+      slabs->l.prev = headslabinfo;
+      slabs->l.next = NULL;
+    } else {
+      // no need to set null as it has those atttributes
+      headslabinfo->prev = &slabs->l;
+      //free(headslabinfo->next);
+      headslabinfo->next = &slabs->l;
+      slabs->l.prev = headslabinfo;
+      headslabinfo = &slabs->l;
+    }
   }
 
   return;
