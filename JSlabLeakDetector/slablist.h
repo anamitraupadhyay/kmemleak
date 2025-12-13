@@ -99,7 +99,8 @@ void init_slab_list_noptr() {
       slabs->l.prev = headslabinfo;
       slabs->l.next = NULL;
     } else {
-      // no need to set null as it has those atttributes
+      // dont set it to null as it has those atttributes and
+      // and doing so will result the previous lists to be lost
       headslabinfo->prev = &slabs->l;
       //free(headslabinfo->next);
       headslabinfo->next = &slabs->l;
