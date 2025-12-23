@@ -29,10 +29,12 @@ void readslabs(struct snapshot *s) { // when struct was not written-Must use 'st
 
 void slablisttraverse(snapshot *s){
     //
+    GET_SNAPSHOT(s);
 }
 
-struct snapshot* init_slab_list(){
-  struct snapshot *slabs = (struct snapshot *)malloc(sizeof(struct snapshot));
+struct list* init_slab_list(void) {
+  struct snapshot *slabs;
+  slabs = (struct snapshot *)malloc(sizeof(struct snapshot));
 
   /*
   snapshot* init_slab_list(void) {
@@ -49,7 +51,13 @@ if (!slab_head) {
 
   slabs->enumtype = SLABINFO;
 
-  return slabs;
+  slabs->filedata.svar = (slabinfo*)malloc(sizeof(slabinfo));
+  if(!slabs->filedata.svar) return NULL;
+
+  slabs->filedata.svar->list.next = NULL;
+  slabs->filedata.svar->list.prev = NULL;
+
+  return &(slabs->l);
 }
 
 void init_slab_list_noptr() {
@@ -62,14 +70,14 @@ void init_slab_list_noptr() {
   }
 
   //the macro is only required for traversals not here
-  slabs->enumtype = SLABINFO; 
+  slabs->enumtype = SLABINFO;
 
   slabs->filedata.svar = malloc(sizeof(*slabs->filedata.svar));
   if (!slabs->filedata.svar) {
     free(slabs);
     return;
   }
-  
+
   //overrriding the union's behaviour
   //slabs->filedata.bvar = NULL;
   //slabs->filedata.vvar = NULL;
