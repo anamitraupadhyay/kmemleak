@@ -3,6 +3,9 @@
 #include <stdlib.h>
 //#include_next "DataStructures.h"
 
+// usage will be
+// readslabs(GET_SNAPSHOT(&slabs->l));
+// or for simplicity explore ** and call the macro in parameter of the function
 void readslabs(struct snapshot *s) { // when struct was not written-Must use 'struct'
                               // tag to refer to type 'snapshot
   FILE *Stream = fopen("/proc/slabinfo", "r");
@@ -27,9 +30,14 @@ void readslabs(struct snapshot *s) { // when struct was not written-Must use 'st
   return;
 }
 
+
+// usage will be slablisttraverse with starting cache of ptr
+// no return type but need some logic to control it 
+// and call will be similar to readslabs using GET_SNAPSHOT
+// logic: depends as of i need 2 
 void slablisttraverse(snapshot *s){
     //
-    GET_SNAPSHOT(s);
+    //GET_SNAPSHOT(s);
 }
 
 struct list* init_slab_list(void) {
