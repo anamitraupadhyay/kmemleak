@@ -35,23 +35,35 @@ int main(
   // setting all these extern pointers as null to better check status => turn
   // out wrong
   // for clean management separating the global fallback and local flow
-  // local inits in terms of both style that is 
+  // local inits in terms of both style that is
   // struct list* headlslabinfo
-  struct list *headslablocal, *headbuddylocal, *headvm = NULL;
+  struct list *headslablocal, 
+  *headbuddylocal, 
+  *headvmlocal = NULL;
+  
   headbuddylocal = init_slab_list();
-  if (!headslablocal) {
-    // normal local init
+  headbuddylocal = init_buddy();
+  headvmlocal = init_vm();
+  
+  if (!headslablocal 
+      && !headbuddylocal
+      && !headvmlocal) {
+    // global fallback for init
+    init_slab_list_noptr();
+    while (argv) {
+      // init_X_noptr(); //init should happen before the loop
+    }
+  } else {
+    // normal local init goes right
     // but the main problem is if the main exec block failed to execed
     // then it will be execing though its in main block and it
     // doesnt make sense and what condition to set in if block
-    //struct list* headslab = init_slab_list(); => wrong
-    //and many other inits not here 
-  } else {
-    //global fallback for init
-  }
-  init_slab_list_noptr();
-  while (argv) {
-    // init_slab_list_noptr(); //init should happen before the loop
+    // struct list* headslab = init_slab_list(); => wrong
+    // and many other inits not here
+    // while loops for normal operation encased here
+    while (argv) {
+      // init_X(); //init should happen before the loop
+    }
   }
   return 0;
 }

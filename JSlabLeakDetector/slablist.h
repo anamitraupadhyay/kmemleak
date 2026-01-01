@@ -30,6 +30,19 @@ void readslabs(struct snapshot *s) { // when struct was not written-Must use 'st
   return;
 }
 
+struct list* init_buddy(){
+    struct snapshot *buddys;
+    buddys = (struct snapshot*)malloc(sizeof(struct snapshot));
+    buddys->enumtype = BUDDYINFO;
+    return &(buddys->l);
+}
+
+struct list* init_vm(){
+    struct snapshot *vm;
+    vm = (struct snapshot*)malloc(sizeof(struct snapshot));
+    vm->enumtype = VMSTAT;
+    return &(vm->l);
+}
 
 // usage will be slablisttraverse with starting cache of ptr
 // no return type but need some logic to control it 
