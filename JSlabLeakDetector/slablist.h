@@ -30,17 +30,24 @@ void readslabs(struct snapshot *s) { // when struct was not written-Must use 'st
   return;
 }
 
-struct list* init_buddy(){
+struct list* init_buddy(void){
     struct snapshot *buddys;
     buddys = (struct snapshot*)malloc(sizeof(struct snapshot));
     buddys->enumtype = BUDDYINFO;
+    buddys->filedata.bvar = (buddyinfo *)malloc(sizeof(buddyinfo));//struct buddyinfo giving errors in sizeof()
+    // about initiation of list component
+    buddys->l.next = NULL;
+    buddys->l.prev = NULL;
     return &(buddys->l);
 }
 
-struct list* init_vm(){
+struct list* init_vm(void){
     struct snapshot *vm;
     vm = (struct snapshot*)malloc(sizeof(struct snapshot));
     vm->enumtype = VMSTAT;
+    vm->filedata.vvar = (vmstat *)malloc(sizeof(vmstat));
+    vm->l.next = NULL;
+    vm->l.prev = NULL;
     return &(vm->l);
 }
 
@@ -75,8 +82,12 @@ if (!slab_head) {
   slabs->filedata.svar = (slabinfo*)malloc(sizeof(slabinfo));
   if(!slabs->filedata.svar) return NULL;
 
-  slabs->filedata.svar->list.next = NULL;
-  slabs->filedata.svar->list.prev = NULL;
+  // slabs->filedata.svar->list.next = NULL;
+  // slabs->filedata.svar->list note to me remove the 
+  // list mention from all 3 data structs
+  
+  slabs->l.next = NULL;
+  slabs->l.prev = NULL;
 
   return &(slabs->l);
 }
